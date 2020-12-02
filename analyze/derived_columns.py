@@ -1,3 +1,4 @@
+from datetime import date
 from functools import reduce
 import pandas as pd
 import numpy as np
@@ -23,11 +24,15 @@ def addDerivedColumns(df):
         All cases, including non-eviction cases.
     """
 
+    # Infer scraped_on if not present
+    if 'scraped_on' not in df.columns:
+        df['scraped_on'] = str(date.today())
+
     # Easier filtering
     df['year'] = pd.to_datetime(df['date']).apply(
         lambda date: date.year).astype(str)
     df['month'] = pd.to_datetime(df['date']).apply(
-        lambda date: date.month_name())
+        lambda date: date.month).astype(str)
     df['week'] = pd.to_datetime(df['date']).apply(
         lambda date: date.week).astype(str)
 
@@ -36,6 +41,7 @@ def addDerivedColumns(df):
                                  .apply(writOfRestitutionFlag))
     df['evicted_flag'] = df['action_history'].apply(evictedFlag)
 
+    # TODO: This might not be good to have here universally.
     numHearings = numHearingsPerCase(df)
 
     if 'num_hearings' in df.columns:

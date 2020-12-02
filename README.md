@@ -4,6 +4,10 @@ This project is for scraping county court records to build a dataset on eviction
 cases in Denver and surrounding counties. This readme should serve as a user
 guide for anyone who wishes to use it.
 
+**WARNING:** This repo is being moved to a public github repo located
+[here](https://github.com/jonathanlamar/case-scraper) for ease of sharing
+outside of Denver DSA. This copy of the project will no longer be maintained.
+
 ## Dependencies
 
 ### Service account certificate

@@ -12,6 +12,17 @@ DENVER_DATA = {
 class Backfill:
     """Backfill.  Consolidate records from V1 of the denver google sheet.  """
 
+    # Tabs titles to avoid when backfilling.
+    IGNORE_TABS = [
+        'pine creek',
+        'weekly_totals',
+        'monthly_totals',
+        'routes',
+        'main evictors',
+        'all cases',
+        'lit drop',
+    ]
+
     def __init__(self, serviceAccountConfigLoc):
         """__init__.  Create a Backfill instance.
 
@@ -41,11 +52,19 @@ class Backfill:
         """
 
         googleSheet = self.gc.open_by_key(countySheetId)
-        worksheets = [ws for ws in googleSheet.worksheets() if ws.title.find(
-            'Lit Drop') == -1 and ws.title != 'Main Evictors' and ws.title != 'ALL CASES']
+        worksheets = []
+        for ws in googleSheet.worksheets():
+            if all([ws.title.lower().find(colName) == -1
+                    for colName in Backfill.IGNORE_TABS]):
+                worksheets.append(ws)
 
         outDf = pd.DataFrame()
         for worksheet in worksheets:
+            # x = input('Processing %s.  Skip? [yN]: ' % worksheet.title)
+            # if len(x) > 0 and x[0].lower() == 'y':
+            #     print('Skipping %s.' % worksheet.title)
+            #     continue
+
             data = worksheet.get_all_values()  # Empty for blank worksheet
 
             try:
@@ -56,24 +75,35 @@ class Backfill:
             df = pd.DataFrame(data, columns=headers)
 
             if df.shape[0] == 0:
+                print('No rows to backfill.  Skipping %s.' % worksheet.title)
                 continue
 
-            df = df[df['type'] == 'FED']
-            df = df[(df['case_number'].isnull() == False)
-                    & (df['case_number'] != '')]
-            df['date'] = self.fixDates(df)
+            if ('type' not in df.columns
+                    or 'case_number' not in df.columns
+                    or 'date' not in df.columns):
+                print('Missing necessary columns.  Skipping %s.'
+                      % worksheet.title)
+                continue
 
-            if 'case number' in df.columns:
-                df = df.drop('case number', axis=1)
-            if 'party_disposition' in df.columns:
-                df = df.drop('party_disposition', axis=1)
-            if 'initial_disposition' in df.columns:
-                df = df.drop('initial_disposition', axis=1)
+            try:
+                df = df[df['type'] == 'FED']
+                df = df[(df['case_number'].isnull() == False)
+                        & (df['case_number'] != '')]
+                df['date'] = self.fixDates(df)
 
-            if any(df['date'] == '########'):
-                df = df[df['date'] != '########']
+                if 'case number' in df.columns:
+                    df = df.drop('case number', axis=1)
+                if 'party_disposition' in df.columns:
+                    df = df.drop('party_disposition', axis=1)
+                if 'initial_disposition' in df.columns:
+                    df = df.drop('initial_disposition', axis=1)
 
-            outDf = self.concatDedupe(outDf, df)
+                if any(df['date'] == '########'):
+                    df = df[df['date'] != '########']
+
+                outDf = self.concatDedupe(outDf, df)
+            except:
+                print('Something went wrong.  Skipping %s.' % worksheet.title)
 
         return addDerivedColumns(outDf)
 
@@ -87,7 +117,8 @@ class Backfill:
         return (dataWithDupes
                 .sort_values('date')
                 .groupby('case_number').last()
-                .reset_index())
+                .reset_index()
+                .fillna(''))  # Fill nans for upload
 
 
 if __name__ == '__main__':

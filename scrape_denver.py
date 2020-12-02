@@ -30,10 +30,7 @@ rooms = [
 ]
 
 DENVER_DATA = {
-    'sheet_id': '1-7maDH9l0Gg2EZ07aJNq_jeW1XujxDByLNruERT184c',
-    # TODO: This is a test sheet to avoid overwriting the one we share.
-    'weekly_sheet_id': '1kCKuu5-JgdNonTGRY0cqlHV0GuBZ83coaSJaZUf1LYM',
-    'monthly_sheet_id': '1yn7yPbzU_z0d4aCnewx5rd24pon_ieuWtMNB4mKSyWE',
+    'sheet_id': '1eZq7IVnLhzGGkRsVHLlpr3U_e7ul_F11tXlUJ6W7yHo',
 }
 
 
