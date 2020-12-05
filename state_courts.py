@@ -1,23 +1,22 @@
-import pandas as pd
-import requests as rq
-import time
-import datetime
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+from ingest.airtable import airtable_create
+from ingest.sheets_ingest import SheetsIngest
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import Select
+from selenium.webdriver.support.ui import WebDriverWait
+import datetime
 import os
+import pandas as pd
+import requests as rq
 import sys
-from dotenv import load_dotenv
-
-from ingest.airtable import airtable_create
-from ingest.sheets_ingest import SheetsIngest
+import time
 
 # DEBUG set to True will run the scraper and save a CSV, but will not send the data to google sheets
-DEBUG = False
+DEBUG = True
 
 load_dotenv()
 
@@ -51,25 +50,18 @@ counties = [
 ]
 
 
-def scrape_county(county):
+def scrape_county(driver, county):
     """
     Scrape the state courts docket by county
 
     Args:
-        county (dict): The county we are searching for. Any county will work so long as it matches what is in the DOM (and we do not need to select the courthouse)
+        county (dict): The county we are searching for. Any county will work so
+        long as it matches what is in the DOM (and we do not need to select the
+        courthouse)
         county.name (string): Name of the county
         county.endpoint_id (string): Google Sheet ID
     """
     url = "https://www.courts.state.co.us/dockets/index.cfm#results"
-
-    if os.getenv('SELENIUM_DRIVER'):
-        if os.getenv('SELENIUM_DRIVER').lower() == 'chrome':
-            driver = webdriver.Chrome()
-        elif os.getenv('SELENIUM_DRIVER').lower() == 'firefox':
-            driver = webdriver.Firefox()
-    else:
-        sys.exit(
-            "Please set which web driver you're using for Selenium in your .env file using variable SELENIUM_DRIVER!")
 
     driver.get(url)
     driver.implicitly_wait(100)
@@ -79,33 +71,17 @@ def scrape_county(county):
         EC.visibility_of_element_located((By.XPATH, '//*[@id="DocketSearch"]'))
     )
 
-    counties_soup = BeautifulSoup(driver.page_source, 'html.parser')
-
-    # Create a dict of counties and their values we can use to determine their order in the DOM
-    counties_dict = {}
-    for option in counties_soup.select('select#County_ID option'):
-        counties_dict[f"{option.text.strip()}"] = option["value"].strip()
-
-    # Select County from the county dropdown
-    county_select = f'//*[@id="County_ID"]/option[{list(counties_dict.keys()).index(county["name"])+1}]'
-    #county_select = f'//*[@id="County_ID"]/option[4]'
-    if county["name"] == "Arapahoe County":
-        court_select = '//*[@id="Location_ID"]/option[4]'
-    # Select 1 Week from date dropdown
-    date_range = '//*[@id="datesearchtype"]/option[4]'
-    # Submit button
-    submit_btn = '//*[@id="submitform"]'
-    # Print All Pages link from results page
-    print_all_path = '//*[@id="docketresults"]/div[2]/span/a[2]'
-
-    # Click the county from the select dropdown
-    driver.find_element_by_xpath(county_select).click()
-    if county["name"] == "Arapahoe County":
+    # Make docket selections
+    Select(driver.find_element_by_id('County_ID')
+           ).select_by_visible_text(county['name'])
+    if county["name"] in ["Arapahoe County", "Boulder County"]:
+        court_select = '//*[@id="Location_ID"]/option[1]'
         driver.find_element_by_xpath(court_select).click()
-    # Click the date range we're searching for
-    driver.find_element_by_xpath(date_range).click()
+    Select(driver.find_element_by_id('datesearchtype')
+           ).select_by_visible_text('1 Week')
+
     # Click the submit button
-    driver.find_element_by_xpath(submit_btn).click()
+    driver.find_element_by_id('submitform').click()
 
     # Wait for the parent div to load for the Print All Pages link
     WebDriverWait(driver, 10).until(
@@ -114,6 +90,8 @@ def scrape_county(county):
     )
 
     # Click the Print All Pages link
+    # Print All Pages link from results page
+    print_all_path = '//*[@id="docketresults"]/div[2]/span/a[2]'
     driver.find_element_by_xpath(print_all_path).click()
     # Switch to new results tab
     driver.switch_to.window(driver.window_handles[1])
@@ -123,6 +101,8 @@ def scrape_county(county):
     # enough for pages with lots of results.
     time.sleep(5)
 
+    # TODO: This should be a separate function at least (driver is in higher
+    # scope)
     # Wait for all table elements to load from results tab
     WebDriverWait(driver, 5).until(
         EC.visibility_of_all_elements_located(
@@ -160,5 +140,14 @@ def scrape_county(county):
 
 
 if __name__ == '__main__':
+    if os.getenv('SELENIUM_DRIVER'):
+        if os.getenv('SELENIUM_DRIVER').lower() == 'chrome':
+            driver = webdriver.Chrome()
+        elif os.getenv('SELENIUM_DRIVER').lower() == 'firefox':
+            driver = webdriver.Firefox()
+    else:
+        sys.exit(
+            "Please set which web driver you're using for Selenium in your .env file using variable SELENIUM_DRIVER!")
+
     for county in counties:
-        scrape_county(county)
+        scrape_county(driver, county)
