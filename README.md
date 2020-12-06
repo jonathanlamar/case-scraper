@@ -4,10 +4,6 @@ This project is for scraping county court records to build a dataset on eviction
 cases in Denver and surrounding counties. This readme should serve as a user
 guide for anyone who wishes to use it.
 
-**WARNING:** This repo is being moved to a public github repo located
-[here](https://github.com/jonathanlamar/case-scraper) for ease of sharing
-outside of Denver DSA. This copy of the project will no longer be maintained.
-
 ## Dependencies
 
 ### Service account certificate
@@ -49,7 +45,7 @@ and how to title the new tab in the google sheet.
 
 | Variable               | Description                                                   |
 | ---------------------- | ------------------------------------------------------------- |
-| AIRTABLE_TOKEN         | Deprecated. Used for sending cases to Airtable.               |
+| SELENIUM_DRIVER        | "chrome" or "firefox" - which browser you have                |
 | GOOGLE_TOKEN           | Filepath to your Google Service Account token.                |
 | FIRST_DATE             | First date to pull from the Denver Courts calendar.           |
 | LAST_DATE              | Last date to pull from the Denver Courts calendar.            |
