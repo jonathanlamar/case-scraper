@@ -15,37 +15,14 @@ import requests as rq
 import sys
 import time
 
-# DEBUG set to True will run the scraper and save a CSV, but will not send the data to google sheets
-DEBUG = True
-
 load_dotenv()
 
 sheetsIngest = SheetsIngest(serviceAccountConfigLoc=os.getenv('GOOGLE_TOKEN'))
 
-"""
 counties = [
     {
-        "name": "Jefferson County",
-        "endpoint_id": "1IDcPcPX3_f-wKoJJLmB2IHqtpkqsJNvrAZGaEiMMulk"
-    },
-    {
-        "name": "Arapahoe County",
-        "endpoint_id": "1UkW3n-5TGxiHgV2UKWA-eXa3CjcRwRizh1K07_lITu4"
-    },
-    {
-        "name": "Adams County",
-        "endpoint_id": "1qPYrp6wPgrg3ZM4DLKwt-u3rdxC8aJ8HAdRyhTzukTA"
-    },
-    {
-        "name": "Douglas County",
-        "endpoint_id": "1t4Aw6x71CKBF-LFxFDc6SDYVQI7iozlitSgVZr5T010"
-    }
-]
-"""
-counties = [
-    {
-        "name": "Jefferson County",
-        "endpoint_id": "1WObDCxp50Tk11aMQrHp3oF-uNd1vU7U_JWIbBzR0q08"
+        "name": "Boulder County",
+        "endpoint_id": "1PMKEv78YgnaoIL1lmg7bAuvCK63WhBU9QrLXlVeFE4s"
     },
 ]
 
@@ -101,14 +78,16 @@ def scrape_county(driver, county):
     # enough for pages with lots of results.
     time.sleep(5)
 
-    # TODO: This should be a separate function at least (driver is in higher
-    # scope)
     # Wait for all table elements to load from results tab
     WebDriverWait(driver, 5).until(
         EC.visibility_of_all_elements_located(
             (By.CSS_SELECTOR, '#dockettable tr'))
     )
 
+    return downloadResultsToDataframe(driver)
+
+
+def downloadResultsToDataframe(driver):
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     # Results page results table
     results = soup.find('table', id='dockettable')
@@ -127,9 +106,11 @@ def scrape_county(driver, county):
 
     # Save the results to CSV
     fed_cases['scraped_on'] = str(datetime.date.today())
-    fed_cases.to_csv(
-        f'out/{county["name"].replace(" ", "_")}_{datetime.date.today().strftime("%Y-%m-%d")}.csv', index=False)
 
+    return fed_cases
+
+
+def closeDriverAndIngest(debug):
     if DEBUG:
         driver.quit()
     else:
@@ -150,4 +131,7 @@ if __name__ == '__main__':
             "Please set which web driver you're using for Selenium in your .env file using variable SELENIUM_DRIVER!")
 
     for county in counties:
-        scrape_county(driver, county)
+        fed_cases = scrape_county(driver, county)
+        fed_cases.to_csv(
+            f'out/{county["name"].replace(" ", "_")}_{datetime.date.today().strftime("%Y-%m-%d")}.csv', index=False)
+        closeDriverAndIngest(debug=True)
