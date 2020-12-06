@@ -1,10 +1,10 @@
-import os
-import json
-import time
-import urllib.parse
-import requests as rq
 from dotenv import load_dotenv
 from itertools import islice
+import json
+import os
+import requests as rq
+import time
+import urllib.parse
 
 import pandas as pd
 
@@ -17,6 +17,7 @@ headers = {
     "Content-Type": "application/json"
 }
 
+
 def process_df(df):
     """
     Process our dataframe from the scraper into batches
@@ -24,18 +25,19 @@ def process_df(df):
     Args:
         df (list): Dataframe received from the scraper
     """
-    start=0
-    end=10
+    start = 0
+    end = 10
     test_arr = []
-    while start<len(df):
+    while start < len(df):
         print(len(df))
         pass_arr = []
         for record in islice(df, start, end):
             pass_arr.append(record)
         test_arr.append(pass_arr)
-        start+=10
-        end+=10
+        start += 10
+        end += 10
     return test_arr
+
 
 def create_payloads(batch_dfs):
     """
@@ -60,6 +62,7 @@ def create_payloads(batch_dfs):
 
     return payload_arr
 
+
 def create(payload, county):
     """
     Use the Airtable API to create records
@@ -77,6 +80,7 @@ def create(payload, county):
         print(f"Successfully added records to {county['name']} base")
     except rq.exceptions.RequestException as e:
         raise SystemExit(e)
+
 
 def airtable_create(df, county_config):
     """

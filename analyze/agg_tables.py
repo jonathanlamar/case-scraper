@@ -1,7 +1,7 @@
+from IPython import embed
 from datetime import timedelta
 import numpy as np
 import pandas as pd
-from IPython import embed
 
 
 class AggTables:

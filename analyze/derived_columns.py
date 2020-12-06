@@ -1,8 +1,8 @@
+from IPython import embed
 from datetime import date
 from functools import reduce
-import pandas as pd
 import numpy as np
-from IPython import embed
+import pandas as pd
 
 
 DERIVED_COLUMNS = [

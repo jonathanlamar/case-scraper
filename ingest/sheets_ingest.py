@@ -1,4 +1,5 @@
 from IPython import embed
+from analyze.agg_tables import AggTables
 from analyze.derived_columns import DERIVED_COLUMNS, numHearingsPerCase
 from df2gspread import df2gspread as d2g
 from dotenv import load_dotenv
@@ -8,7 +9,6 @@ import gspread
 import numpy as np
 import os
 import pandas as pd
-from analyze.agg_tables import AggTables
 
 load_dotenv()
 

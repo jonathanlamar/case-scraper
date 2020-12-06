@@ -1,12 +1,12 @@
+from IPython import embed
 from analyze.agg_tables import AggTables
 from analyze.derived_columns import addDerivedColumns, DERIVED_COLUMNS
 from dotenv import load_dotenv
-from ingest.sheets_ingest import SheetsIngest
 from glob import glob
+from ingest.sheets_ingest import SheetsIngest
 from itertools import product
-from scrapers.case_scraper import DenverCaseScraper
-from scrapers.docket_scraper import DenverDocketScraper
-from IPython import embed
+from scrapers.denver_case_scraper import DenverCaseScraper
+from scrapers.denver_dockets import DenverDocketScraper
 import os
 import pandas as pd
 

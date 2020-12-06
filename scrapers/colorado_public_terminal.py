@@ -1,16 +1,15 @@
-import re
-import pandas as pd
-import requests as rq
-import argparse
-import time
 from bs4 import BeautifulSoup
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import Select
+from selenium.webdriver.support.ui import WebDriverWait
+import argparse
+import pandas as pd
+import re
+import requests as rq
+import time
 
 ################################################################################
 # WARNING: This does not work.
@@ -31,10 +30,11 @@ case = 'C712020C37588'
 parser.add_argument('-i', '--sess_id', help='JSESSIONID cookie.')
 args = parser.parse_args()
 
+
 class TerminalCaseScraper:
     def __init__(self, sess_id=None):
-        self.sessId    = sess_id
-        self.soup       = None
+        self.sessId = sess_id
+        self.soup = None
         self.urlPrefix = 'https://www.jbits.courts.state.co.us/publicAccess/web/case'
 
     def parse_case(self, case_num):
@@ -66,7 +66,7 @@ class TerminalCaseScraper:
         print(self.sessId)
 
         cookies = {
-            'name': 'JSESSIONID', 
+            'name': 'JSESSIONID',
             'value': self.sessId,
             'path': '/publicAccess',
             'domain': 'www.jbits.courts.state.co.us',
@@ -79,21 +79,22 @@ class TerminalCaseScraper:
 
         driver = webdriver.Firefox(firefox_profile=fp)
         driver.get('https://www.jbits.courts.state.co.us/publicAccess/web/search')
-        #time.sleep(2)
+        # time.sleep(2)
         print(driver.get_cookie('JSESSIONID'))
-        #driver.delete_cookie('JSESSIONID')
+        # driver.delete_cookie('JSESSIONID')
         driver.delete_all_cookies()
         driver.add_cookie(cookies)
-        #print(driver.get_cookie('JSESSIONID'))
+        # print(driver.get_cookie('JSESSIONID'))
         print(driver.get_cookies())
-        #time.sleep(1)
+        # time.sleep(1)
         driver.get(url)
         driver.implicitly_wait(100)
         print(driver.get_cookies())
-        
+
         # Wait for the <table id="caseHistoryTable"> element to load
         WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.XPATH, '//*[@id="caseHistoryTable"]'))
+            EC.visibility_of_element_located(
+                (By.XPATH, '//*[@id="caseHistoryTable"]'))
         )
 
         caption_select = '//*[@id="shortCaption"]'
@@ -103,7 +104,8 @@ class TerminalCaseScraper:
 
         # Wait for the <table id="partyTable"> element to load
         WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.XPATH, '//*[@id="partyTable"]'))
+            EC.visibility_of_element_located(
+                (By.XPATH, '//*[@id="partyTable"]'))
         )
 
         self.soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -121,7 +123,7 @@ class TerminalCaseScraper:
         table = table[0]
 
         table.set_index('Party Type', inplace=True)
-        
+
         data = {
             'case': [case_num],
             'plaintiff': table.loc['Plaintiff', 'Party Name'],
@@ -130,10 +132,10 @@ class TerminalCaseScraper:
         case_df = pd.DataFrame(data=data)
         return case_df
 
+    # def generate_terminal_df(case_nums)
 
-    #def generate_terminal_df(case_nums)
+    # def join_dfs(county_df)
 
-    #def join_dfs(county_df)
 
 if __name__ == '__main__':
     df = pd.read_csv('./out/Jefferson_County_2020-08-16-1.csv')
@@ -145,3 +147,4 @@ if __name__ == '__main__':
     print(html)
     print(html.columns)
     print(html['defendant'])
+

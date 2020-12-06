@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 from glob import glob
 from ingest.sheets_ingest import SheetsIngest
 from itertools import product
-from scrapers.case_scraper import DenverCaseScraper
-from scrapers.docket_scraper import DenverDocketScraper
+from scrapers.denver_case_scraper import DenverCaseScraper
+from scrapers.denver_dockets import DenverDocketScraper
 import os
 import pandas as pd
 
