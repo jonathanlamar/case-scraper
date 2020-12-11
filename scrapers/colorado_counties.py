@@ -14,6 +14,7 @@ import pandas as pd
 import requests as rq
 import sys
 import time
+from IPython import embed
 
 load_dotenv()
 
@@ -21,6 +22,7 @@ load_dotenv()
 class ColoradoCountyScraper:
     countySheetIds = {
         'Boulder County': "1PMKEv78YgnaoIL1lmg7bAuvCK63WhBU9QrLXlVeFE4s",
+        'Denver County': "foooooo",  # For testing
     }
     stateCourtsUrl = "https://www.courts.state.co.us/dockets/index.cfm#results"
 
@@ -35,6 +37,11 @@ class ColoradoCountyScraper:
             self.driver = webdriver.Firefox()
         else:
             raise RuntimeError('Cannot find driver type in .env file.')
+
+    def debugLog(self, promptText):
+        print('!'*80)
+        print(promptText)
+        print('!'*80)
 
     def scrape(self):
         self.driver.get(ColoradoCountyScraper.stateCourtsUrl)
@@ -51,29 +58,47 @@ class ColoradoCountyScraper:
          .select_by_visible_text(self.county))
         (Select(self.driver.find_element_by_id('datesearchtype'))
          .select_by_visible_text('1 Week'))
-        locationSelect = self.driver.find_element_by_id("Location_ID")
-        courtLocations = locationSelect.find_elements_by_tag_name("option")
+        locationSelect = Select(self.driver.find_element_by_id("Location_ID"))
+        # Skipping first because either
+        # 1. There is only one option and we don't need to select it, or
+        # 2. There are multiple options, but the first the blank "select none"
+        #    fake option.
+        locations = [x.text for x in locationSelect.options[1:]]
 
         # Loop over court rooms
         locationDockets = []
-        for locationOption in courtLocations:
-            locationText = locationOption.get_attribute('text')
-            handle = self.openDocketInTab(locationOption)
-            locationDocket = self.scrapeDataForOneLocation(handle)
-            locationDocket['court_location'] = locationText
-            locationDockets.append(locationDocket)
+        for location in locations:
+            self.debugLog('In loop.  location = ' + location)
+            handle = self.openDocketInTab(location)
+            # locationDocket = self.scrapeDataForOneLocation(handle)
+            # locationDocket['court_location'] = locationText
+            # locationDockets.append(locationDocket)
 
-        return pd.concat(locationDockets)
+        self.debugLog('Done with loop.')
 
-    def openDocketInTab(self, locationOption):
-        locationOption.click()
-        self.driver.find_element_by_id('submitform').click()
+        # return pd.concat(locationDockets)
+
+    def openDocketInTab(self, location):
+        locationSelect = Select(self.driver.find_element_by_id("Location_ID"))
+        locationSelect.select_by_visible_text(location)
+
+        self.debugLog('In openDocketInTab.  Looking for submitform.')
+        embed()
+
+        submitCandidates = [x for x in self.driver.find_elements_by_name(
+            'submitform') if x.is_displayed()]
+        assert len(submitCandidates) == 1
+        self.debugLog('Found submitform.')
+        submitCandidates[0].click()
 
         # Wait for the parent div to load for the Print All Pages link
-        WebDriverWait(self.driver, 10).until(
-            EC.visibility_of_element_located(
-                (By.CSS_SELECTOR, '#docketresults > div.page-content-right'))
-        )
+        # WebDriverWait(self.driver, 10).until(
+        #     EC.visibility_of_element_located(
+        #         (By.CSS_SELECTOR, '#docketresults > div.page-content-right'))
+        # )
+        time.sleep(5)
+
+        self.debugLog('done waiting.')
 
         # Click the Print All Pages link
         # Print All Pages link from results page
@@ -129,3 +154,8 @@ class ColoradoCountyScraper:
         fedCases['scraped_on'] = str(datetime.date.today())
 
         return fedCases
+
+
+if __name__ == '__main__':
+    scraper = ColoradoCountyScraper('Denver County', debug=True)
+    scraper.scrape()
