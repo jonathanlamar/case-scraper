@@ -33,8 +33,12 @@ class ColoradoCountyScraper:
 
         if os.getenv('SELENIUM_DRIVER').lower() == 'chrome':
             self.driver = webdriver.Chrome()
+            if not debug:
+                webdriver.ChromeOptions().add_argument('headless')
         elif os.getenv('SELENIUM_DRIVER').lower() == 'firefox':
             self.driver = webdriver.Firefox()
+            if not debug:
+                webdriver.FirefoxOptions().add_argument('--headless')
         else:
             raise RuntimeError('Cannot find driver type in .env file.')
 
