@@ -21,10 +21,10 @@ load_dotenv()
 
 class ColoradoCountyScraper:
     countySheetIds = {
-        'Boulder County': "1PMKEv78YgnaoIL1lmg7bAuvCK63WhBU9QrLXlVeFE4s",
-        'Denver County': "foooooo",  # For testing
+        'Boulder County': '1PMKEv78YgnaoIL1lmg7bAuvCK63WhBU9QrLXlVeFE4s',
+        'Denver County': 'foooooo',  # For testing
     }
-    stateCourtsUrl = "https://www.courts.state.co.us/dockets/index.cfm#results"
+    stateCourtsUrl = 'https://www.courts.state.co.us/dockets/index.cfm#results'
 
     def __init__(self, county, debug=False):
         self.county = county
@@ -50,7 +50,7 @@ class ColoradoCountyScraper:
     def scrape(self):
         self.openAndPrefillSearchPage()
 
-        locationSelect = Select(self.driver.find_element_by_id("Location_ID"))
+        locationSelect = Select(self.driver.find_element_by_id('Location_ID'))
         # Skipping first element because either
         # 1. There is only one option and we don't need to select it, or
         # 2. There are multiple options, but the first the blank "select none"
@@ -109,7 +109,7 @@ class ColoradoCountyScraper:
         assert len(table) == 1
 
         allCasesDf = table[0]
-        self.debugLog("Pulled %d records from the %s docket"
+        self.debugLog('Pulled %d records from the %s docket'
                       % (allCasesDf.shape[0], self.county))
         fedCases = allCasesDf[allCasesDf['Hearing Type'] == 'FED Hearing']
         fedCases = (
@@ -126,7 +126,7 @@ class ColoradoCountyScraper:
     def openDocketInTab(self, location):
         self.openAndPrefillSearchPage()
 
-        locationSelect = Select(self.driver.find_element_by_id("Location_ID"))
+        locationSelect = Select(self.driver.find_element_by_id('Location_ID'))
         locationSelect.select_by_visible_text(location)
 
         self.debugLog('In openDocketInTab.  Looking for submitform.')
@@ -138,7 +138,7 @@ class ColoradoCountyScraper:
         submitCandidates[0].click()
 
         allPagesLink = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.LINK_TEXT, "Print All Pages")))
+            EC.element_to_be_clickable((By.LINK_TEXT, 'Print All Pages')))
         self.debugLog('done waiting.')
 
         allPagesLink.click()
