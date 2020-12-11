@@ -44,6 +44,28 @@ class ColoradoCountyScraper:
         print('!'*80)
 
     def scrape(self):
+        self.openAndPrefillSearchPage()
+
+        locationSelect = Select(self.driver.find_element_by_id("Location_ID"))
+        # Skipping first element because either
+        # 1. There is only one option and we don't need to select it, or
+        # 2. There are multiple options, but the first the blank "select none"
+        #    fake option.
+        locations = [x.text for x in locationSelect.options[1:]]
+
+        # Loop over court rooms
+        locationDockets = []
+        for location in locations:
+            self.debugLog('In loop.  location = ' + location)
+            locationDocket = self.scrapeDataForOneLocation(location)
+            locationDocket['court_location'] = location
+            locationDockets.append(locationDocket)
+
+        self.debugLog('Done with loop.')
+
+        return pd.concat(locationDockets)
+
+    def openAndPrefillSearchPage(self):
         self.driver.get(ColoradoCountyScraper.stateCourtsUrl)
         self.driver.implicitly_wait(100)
 
@@ -58,66 +80,10 @@ class ColoradoCountyScraper:
          .select_by_visible_text(self.county))
         (Select(self.driver.find_element_by_id('datesearchtype'))
          .select_by_visible_text('1 Week'))
-        locationSelect = Select(self.driver.find_element_by_id("Location_ID"))
-        # Skipping first because either
-        # 1. There is only one option and we don't need to select it, or
-        # 2. There are multiple options, but the first the blank "select none"
-        #    fake option.
-        locations = [x.text for x in locationSelect.options[1:]]
 
-        # Loop over court rooms
-        locationDockets = []
-        for location in locations:
-            self.debugLog('In loop.  location = ' + location)
-            handle = self.openDocketInTab(location)
-            # locationDocket = self.scrapeDataForOneLocation(handle)
-            # locationDocket['court_location'] = locationText
-            # locationDockets.append(locationDocket)
+    def scrapeDataForOneLocation(self, location):
+        handle = self.openDocketInTab(location)
 
-        self.debugLog('Done with loop.')
-
-        # return pd.concat(locationDockets)
-
-    def openDocketInTab(self, location):
-        locationSelect = Select(self.driver.find_element_by_id("Location_ID"))
-        locationSelect.select_by_visible_text(location)
-
-        self.debugLog('In openDocketInTab.  Looking for submitform.')
-        embed()
-
-        submitCandidates = [x for x in self.driver.find_elements_by_name(
-            'submitform') if x.is_displayed()]
-        assert len(submitCandidates) == 1
-        self.debugLog('Found submitform.')
-        submitCandidates[0].click()
-
-        # Wait for the parent div to load for the Print All Pages link
-        # WebDriverWait(self.driver, 10).until(
-        #     EC.visibility_of_element_located(
-        #         (By.CSS_SELECTOR, '#docketresults > div.page-content-right'))
-        # )
-        time.sleep(5)
-
-        self.debugLog('done waiting.')
-
-        # Click the Print All Pages link
-        # Print All Pages link from results page
-        print_all_path = '//*[@id="docketresults"]/div[2]/span/a[2]'
-        self.driver.find_element_by_xpath(print_all_path).click()
-
-        # Return handle for the new tab
-        return self.driver.window_handles[-1]
-
-    def closeDriverAndIngest(self):
-        if not self.debug:
-            sheetsIngest = SheetsIngest(
-                serviceAccountConfigLoc=os.getenv('GOOGLE_TOKEN'))
-            sheetsIngest.ingestNewBatchAndUpload(
-                newlyScrapedCases=self.fedCases,
-                countySheetId=ColoradoCountyScraper.countySheetIds[self.county])
-        self.driver.quit()
-
-    def scrapeDataForOneLocation(self, handle):
         # Switch to new results tab
         self.driver.switch_to.window(handle)
 
@@ -126,23 +92,22 @@ class ColoradoCountyScraper:
         # enough for pages with lots of results.
         time.sleep(5)
 
-        # Wait for all table elements to load from results tab
         WebDriverWait(self.driver, 5).until(
             EC.visibility_of_all_elements_located(
                 (By.CSS_SELECTOR, '#dockettable tr'))
         )
 
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        # Results page results table
         results = soup.find('table', id='dockettable')
-
-        # Read results into pandas df
         table = pd.read_html(str(results), header=0)
-        print(
-            f"Pulled {len(table[0])} records from the {self.county} docket")
 
-        # Filter for FED cases only
-        fedCases = table[0].loc[table[0]["Hearing Type"] == "FED Hearing"]
+        # pulls a weird singleton list containing a dataframe for some reason.
+        assert len(table) == 1
+
+        allCasesDf = table[0]
+        self.debugLog("Pulled %d records from the %s docket"
+                      % (allCasesDf.shape[0], self.county))
+        fedCases = allCasesDf[allCasesDf['Hearing Type'] == 'FED Hearing']
         fedCases = (
             fedCases
             .rename(columns={'Case #': 'case_number'})
@@ -150,12 +115,46 @@ class ColoradoCountyScraper:
             .agg(lambda x: '; '.join(set(x)))
         )
 
-        # Save the results to CSV
         fedCases['scraped_on'] = str(datetime.date.today())
 
         return fedCases
 
+    def openDocketInTab(self, location):
+        self.openAndPrefillSearchPage()
+
+        locationSelect = Select(self.driver.find_element_by_id("Location_ID"))
+        locationSelect.select_by_visible_text(location)
+
+        self.debugLog('In openDocketInTab.  Looking for submitform.')
+
+        submitCandidates = [x for x in self.driver.find_elements_by_name(
+            'submitform') if x.is_displayed()]
+        assert len(submitCandidates) == 1
+        self.debugLog('Found submitform.')
+        submitCandidates[0].click()
+
+        allPagesLink = WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.LINK_TEXT, "Print All Pages")))
+        self.debugLog('done waiting.')
+
+        allPagesLink.click()
+
+        # FIXME: This is error prone.
+        # Return handle for the new tab
+        return self.driver.window_handles[-1]
+
+    def closeDriverAndIngest(self):
+        if not self.debug:
+            sheetsIngest = SheetsIngest(
+                serviceAccountConfigLoc=os.getenv('GOOGLE_TOKEN'))
+
+            # FIXME:
+            # sheetsIngest.ingestNewBatchAndUpload(
+            #     newlyScrapedCases=self.fedCases,
+            #     countySheetId=ColoradoCountyScraper.countySheetIds[self.county])
+        self.driver.quit()
+
 
 if __name__ == '__main__':
-    scraper = ColoradoCountyScraper('Denver County', debug=True)
-    scraper.scrape()
+    scraper = ColoradoCountyScraper('Boulder County', debug=True)
+    df = scraper.scrape()
